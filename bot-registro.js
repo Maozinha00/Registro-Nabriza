@@ -4,16 +4,16 @@
  * FAMÍLIA & AMIGOS (VERSÃO INDEPENDENTE PARA RAILWAY)
  * ============================================================================
  * 
- * 🚀 CARACTERÍSTICAS DESTE BOT:
+ * 🚀 CARACTERÍSTICAS:
  * - 100% focado no Registro Oficial, Modais, Aprovação Staff e Tags no Nick.
- * - Não precisa de .env! Lê direto das "Variables" do painel da Railway.
+ * - Lê as configurações direto das "Variables" do painel da Railway.
  * - Mini servidor HTTP na porta 3000 para o Health Check da Railway.
- * - Horário de Brasília preciso via Intl.DateTimeFormat (America/Sao_Paulo).
+ * - Horário de Brasília via Intl.DateTimeFormat (America/Sao_Paulo).
  * - Anti-crash reforçado para nunca cair.
  * - Atribui tag [FN] ou [AMIGO] automaticamente ao aprovar.
  * - Remove automaticamente o cargo "Não Registrado".
- * - Suporta Slash Commands (/registro, /painel, /setupregistro, /statusregistro, /fichas, /regras).
- * - Suporta Comandos de Prefixo (!registro, !painel, !setupregistro, !registrar, !salachefes, !limpar, !status, !ajuda).
+ * - Slash Commands: /registro, /painel, /setupregistro, /statusregistro, /fichas, /regras.
+ * - Comandos de Prefixo: !registro, !painel, !setupregistro, !registrar, !salachefes, !limpar, !status, !ajuda.
  */
 
 try {
@@ -50,7 +50,7 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
     console.error(`🛡️ [ANTI-CRASH Monitor] Erro detectado (${origin}):`, err.message || err);
 });
 
-// ⚙️ CONFIGURAÇÃO CENTRALIZADA (Lida das Variables da Railway ou .env)
+// ⚙️ CONFIGURAÇÃO CENTRALIZADA
 const CONFIG = {
     token: process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.trim() : "",
     guildId: process.env.GUILD_ID ? process.env.GUILD_ID.trim() : null,
@@ -124,9 +124,9 @@ function getHorarioBrasiliaFormatado() {
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,      // ⚠️ Necessário ativar no Discord Developer Portal
+        GatewayIntentBits.GuildMembers,      // ⚠️ Ative no Discord Developer Portal
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent     // ⚠️ Necessário ativar no Discord Developer Portal
+        GatewayIntentBits.MessageContent     // ⚠️ Ative no Discord Developer Portal
     ],
     partials: [Partials.Channel, Partials.GuildMember, Partials.User]
 });
@@ -467,7 +467,6 @@ client.once(Events.ClientReady, async (c) => {
         status: "online"
     });
 
-    // Registra Slash Commands de Registro
     const slashCommands = [
         {
             name: 'registro',
@@ -515,14 +514,12 @@ client.on(Events.GuildMemberAdd, async (member) => {
     try {
         console.log(`[NOVO MEMBRO] ${member.user.tag} (${member.id}) entrou no servidor.`);
 
-        // Entrega o cargo "Não Registrado"
         let roleNaoReg = member.guild.roles.cache.get(CONFIG.cargoNaoRegistradoId) ||
                          member.guild.roles.cache.find(r => r.name.includes('Não Registrado'));
         if (roleNaoReg) {
             await member.roles.add(roleNaoReg).catch(err => console.error('Erro ao entregar cargo Não Registrado:', err.message));
         }
 
-        // Envia mensagem no canal de boas-vindas / avisos com os botões
         const canalAvisos = member.guild.channels.cache.find(c =>
             c.type === ChannelType.GuildText && (
                 c.name.includes('avisos') || c.name.includes('geral') || c.name.includes('boas-vindas') || c.name.includes('chat')
@@ -677,7 +674,7 @@ client.on(Events.MessageCreate, async (msg) => {
         const waitMsg = await msg.reply('⏳ **Configurando Sala Privada dos Chefes de forma segura...**');
         const res = await configurarSalaPrivadaChefes(msg.guild);
         return waitMsg.edit({
-            content: `✅ **Sala Privada configurada!**\n📁 Categoria: `${res.categoria}`\n💬 Chat: `${res.chatTexto}`\n🔊 Voz: `${res.chatVoz}``
+            content: `✅ **Sala Privada configurada!**\n📁 Categoria: \`${res.categoria}\`\n💬 Chat: \`${res.chatTexto}\`\n🔊 Voz: \`${res.chatVoz}\``
         });
     }
 
@@ -941,7 +938,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             } catch (_) {}
 
             await interaction.editReply({
-                content: `✅ **Aprovado por <@${interaction.user.id}>!** Cargo **${isFam ? '⚜️ Família Nabriza' : '🤝 Amigos'}** entregue e nick atualizado para `${novoNick}`.`,
+                content: `✅ **Aprovado por <@${interaction.user.id}>!** Cargo **${isFam ? '⚜️ Família Nabriza' : '🤝 Amigos'}** entregue e nick atualizado para \`${novoNick}\`.`,
                 embeds: [],
                 components: []
             });
