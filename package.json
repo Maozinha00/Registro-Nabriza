@@ -1,14 +1,13 @@
 {
   "name": "bot-registro-discord",
   "version": "1.0.0",
-  "description": "Bot exclusivo de Registro Família & Amigos",
+  "description": "Bot exclusivo de Registro e Gestão de Cargos Família & Amigos",
   "main": "bot-registro.js",
   "scripts": {
     "start": "node bot-registro.js"
   },
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5"
+    "discord.js": "^14.16.3"
   },
   "engines": {
     "node": ">=18.0.0"
