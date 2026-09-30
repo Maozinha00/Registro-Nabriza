@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * ⚜️ BOT DISCORD 01 • SISTEMA EXCLUSIVO DE REGISTRO & CARGOS ⚜️
- * FAMÍLIA NABRIZA & AMIGOS (VERSÃO ATUALIZADA PARA RAILWAY / NODE.JS)
+ * FAMÍLIA NABRIZA & AMIGOS (AUTO-TAG & DETECÇÃO INTELIGENTE DE CARGOS)
  * ============================================================================
  */
 
@@ -31,7 +31,7 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('🛡️ [ANTI-CRASH] Rejeição interceptada:', reason);
 });
 process.on('uncaughtException', (err, origin) => {
-    console.error(`🛡️ [ANTI-CRASH] Exceção interceptada (${origin}):`, err.message || err);
+    console.error(`🛡️ [ANTI-CRASH] Exceção (${origin}):`, err.message || err);
 });
 process.on('uncaughtExceptionMonitor', (err, origin) => {
     console.error(`🛡️ [ANTI-CRASH Monitor] Erro:`, err.message || err);
@@ -45,17 +45,17 @@ const CONFIG = {
     corEmbed: "#D4AF37", // Dourado
     corChefe: "#FFD700", // Ouro
 
-    // Tag Oficial da Família (Agora [NaBriza])
+    // Tags Oficiais
     tagFamilia: "[NaBriza]",
     tagAmigos: "[AMIGO]",
 
-    // IDs de Cargos (Configuráveis via Railway Variables)
+    // IDs opcionais (podem ser passados via Railway)
     cargoChefeId: process.env.CARGO_CHEFE_ID ? process.env.CARGO_CHEFE_ID.trim() : null,
-    cargoFamiliaId: process.env.CARGO_FAMILIA_ID ? process.env.CARGO_FAMILIA_ID.trim() : "1546736138918694983",
-    cargoAmigosId: process.env.CARGO_AMIGOS_ID ? process.env.CARGO_AMIGOS_ID.trim() : "1546736135965904926",
-    cargoNaoRegistradoId: process.env.CARGO_NAO_REGISTRADO_ID ? process.env.CARGO_NAO_REGISTRADO_ID.trim() : "1515125826780135480",
+    cargoFamiliaId: process.env.CARGO_FAMILIA_ID ? process.env.CARGO_FAMILIA_ID.trim() : null,
+    cargoAmigosId: process.env.CARGO_AMIGOS_ID ? process.env.CARGO_AMIGOS_ID.trim() : null,
+    cargoNaoRegistradoId: process.env.CARGO_NAO_REGISTRADO_ID ? process.env.CARGO_NAO_REGISTRADO_ID.trim() : null,
 
-    // Canal onde a Staff avalia as fichas
+    // Canal de Aprovação Staff
     canalAprovacaoId: process.env.CANAL_APROVACAO_ID ? process.env.CANAL_APROVACAO_ID.trim() : null,
 
     // Porta HTTP para Health Check da Railway
@@ -70,6 +70,7 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({
         sistema: 'Bot de Registro - Família NaBriza & Amigos',
         tagFamilia: CONFIG.tagFamilia,
+        tagAmigos: CONFIG.tagAmigos,
         status: isReady ? 'online' : 'iniciando',
         bot: client?.user ? client.user.tag : 'Iniciando...',
         servidores: client?.guilds?.cache?.size || 0,
@@ -115,35 +116,300 @@ function getHorarioBrasiliaFormatado() {
 client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,      // Ative no Developer Portal
+        GatewayIntentBits.GuildMembers,      // Obrigatório no Discord Dev Portal
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent     // Ative no Developer Portal
+        GatewayIntentBits.MessageContent     // Obrigatório no Discord Dev Portal
     ],
     partials: [Partials.Channel, Partials.GuildMember, Partials.User]
 });
 
-// 📜 PAINEL OFICIAL DE REGISTRO
+// ============================================================================
+// 🧠 DETECÇÃO E GERENCIAMENTO INTELIGENTE DE CARGOS
+// ============================================================================
+
+function normalizarTexto(txt) {
+    return (txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+async function obterCargoFamilia(guild) {
+    if (!guild) return null;
+    await guild.roles.fetch().catch(() => {});
+
+    if (CONFIG.cargoFamiliaId && guild.roles.cache.has(CONFIG.cargoFamiliaId)) {
+        return guild.roles.cache.get(CONFIG.cargoFamiliaId);
+    }
+
+    let role = guild.roles.cache.find(r => {
+        const n = normalizarTexto(r.name);
+        return n.includes('nabriza') || n.includes('familia') || n.includes('[nabriza]') || n.includes('[fn]');
+    });
+
+    if (!role) {
+        role = await guild.roles.create({
+            name: '⚜️ Família NaBriza',
+            color: '#D4AF37',
+            hoist: true,
+            reason: 'Cargo oficial da Família NaBriza gerado automaticamente pelo bot'
+        }).catch(() => null);
+    }
+
+    if (role) CONFIG.cargoFamiliaId = role.id;
+    return role;
+}
+
+async function obterCargoAmigos(guild) {
+    if (!guild) return null;
+    await guild.roles.fetch().catch(() => {});
+
+    if (CONFIG.cargoAmigosId && guild.roles.cache.has(CONFIG.cargoAmigosId)) {
+        return guild.roles.cache.get(CONFIG.cargoAmigosId);
+    }
+
+    let role = guild.roles.cache.find(r => {
+        const n = normalizarTexto(r.name);
+        return n.includes('amigo') || n.includes('amigos') || n.includes('[amigo]');
+    });
+
+    if (!role) {
+        role = await guild.roles.create({
+            name: '🤝 Amigos',
+            color: '#2ECC71',
+            hoist: true,
+            reason: 'Cargo oficial de Amigos gerado automaticamente pelo bot'
+        }).catch(() => null);
+    }
+
+    if (role) CONFIG.cargoAmigosId = role.id;
+    return role;
+}
+
+async function obterCargoNaoRegistrado(guild) {
+    if (!guild) return null;
+    await guild.roles.fetch().catch(() => {});
+
+    if (CONFIG.cargoNaoRegistradoId && guild.roles.cache.has(CONFIG.cargoNaoRegistradoId)) {
+        return guild.roles.cache.get(CONFIG.cargoNaoRegistradoId);
+    }
+
+    let role = guild.roles.cache.find(r => {
+        const n = normalizarTexto(r.name);
+        return n.includes('nao registrado') || n.includes('nao-registrado') || n.includes('unregistered');
+    });
+
+    if (!role) {
+        role = await guild.roles.create({
+            name: '❌ Não Registrado',
+            color: '#95A5A6',
+            hoist: false
+        }).catch(() => null);
+    }
+
+    if (role) CONFIG.cargoNaoRegistradoId = role.id;
+    return role;
+}
+
+function limparTagsAntigas(nome) {
+    if (!nome) return 'Membro';
+    return nome.replace(/^\[[^\]]+\]\s*/g, '').trim() || 'Membro';
+}
+
+function formatarNickComTag(nomeBase, tag) {
+    const limpo = limparTagsAntigas(nomeBase);
+    const prefixo = `${tag} `;
+    const maxRestante = 32 - prefixo.length;
+    return `${prefixo}${limpo.substring(0, maxRestante)}`;
+}
+
+async function aplicarCargoETag(member, isFam, rawNick) {
+    const guild = member.guild;
+    const roleFamilia = await obterCargoFamilia(guild);
+    const roleAmigos = await obterCargoAmigos(guild);
+    const roleNaoReg = await obterCargoNaoRegistrado(guild);
+
+    const cargoAlvo = isFam ? roleFamilia : roleAmigos;
+    const cargoOposto = isFam ? roleAmigos : roleFamilia;
+    const tagAlvo = isFam ? CONFIG.tagFamilia : CONFIG.tagAmigos;
+
+    if (cargoAlvo) await member.roles.add(cargoAlvo).catch(() => {});
+    if (cargoOposto && member.roles.cache.has(cargoOposto.id)) {
+        await member.roles.remove(cargoOposto).catch(() => {});
+    }
+    if (roleNaoReg && member.roles.cache.has(roleNaoReg.id)) {
+        await member.roles.remove(roleNaoReg).catch(() => {});
+    }
+
+    const base = rawNick || member.nickname || member.user.globalName || member.user.username;
+    const novoNick = formatarNickComTag(base, tagAlvo);
+
+    if (member.manageable) {
+        await member.setNickname(novoNick).catch(() => {});
+    }
+
+    return {
+        cargoEntregue: cargoAlvo?.name || (isFam ? 'Família NaBriza' : 'Amigos'),
+        novoNick
+    };
+}
+
+async function sincronizarTagsTodosMembros(guild) {
+    const roleFam = await obterCargoFamilia(guild);
+    const roleAmg = await obterCargoAmigos(guild);
+    await guild.members.fetch().catch(() => {});
+
+    let atualizadosFam = 0;
+    let atualizadosAmg = 0;
+    let ignorados = 0;
+
+    for (const member of guild.members.cache.values()) {
+        if (member.user.bot) continue;
+
+        const temFam = roleFam && member.roles.cache.has(roleFam.id);
+        const temAmg = roleAmg && member.roles.cache.has(roleAmg.id);
+
+        if (temFam) {
+            const nomeBase = member.nickname || member.user.globalName || member.user.username;
+            const novoNick = formatarNickComTag(nomeBase, CONFIG.tagFamilia);
+
+            if (member.nickname !== novoNick) {
+                if (member.manageable) {
+                    await member.setNickname(novoNick).then(() => atualizadosFam++).catch(() => ignorados++);
+                } else {
+                    ignorados++;
+                }
+            }
+        } else if (temAmg) {
+            const nomeBase = member.nickname || member.user.globalName || member.user.username;
+            const novoNick = formatarNickComTag(nomeBase, CONFIG.tagAmigos);
+
+            if (member.nickname !== novoNick) {
+                if (member.manageable) {
+                    await member.setNickname(novoNick).then(() => atualizadosAmg++).catch(() => ignorados++);
+                } else {
+                    ignorados++;
+                }
+            }
+        }
+    }
+
+    return {
+        atualizadosFam,
+        atualizadosAmg,
+        total: atualizadosFam + atualizadosAmg,
+        ignorados,
+        roleFamNome: roleFam?.name || 'Família NaBriza',
+        roleAmgNome: roleAmg?.name || 'Amigos'
+    };
+}
+
+// 👤 Evento: Novo Membro Entra no Servidor (100% Silencioso)
+client.on(Events.GuildMemberAdd, async (member) => {
+    try {
+        console.log(`[NOVO MEMBRO SILENCIOSO] ${member.user.tag} entrou.`);
+        const roleNaoReg = await obterCargoNaoRegistrado(member.guild);
+        if (roleNaoReg) {
+            await member.roles.add(roleNaoReg).catch(() => {});
+        }
+    } catch (err) {
+        console.error('Erro no guildMemberAdd:', err.message);
+    }
+});
+
+// 🔄 Evento: Detecção Automática de Mudança de Cargo
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    try {
+        const guild = newMember.guild;
+        const roleFam = await obterCargoFamilia(guild);
+        const roleAmg = await obterCargoAmigos(guild);
+
+        const tinhaFam = roleFam && oldMember.roles.cache.has(roleFam.id);
+        const temFam = roleFam && newMember.roles.cache.has(roleFam.id);
+
+        const tinhaAmg = roleAmg && oldMember.roles.cache.has(roleAmg.id);
+        const temAmg = roleAmg && newMember.roles.cache.has(roleAmg.id);
+
+        if (!tinhaFam && temFam) {
+            const nomeBase = newMember.nickname || newMember.user.globalName || newMember.user.username;
+            const novoNick = formatarNickComTag(nomeBase, CONFIG.tagFamilia);
+            if (newMember.manageable && newMember.nickname !== novoNick) {
+                await newMember.setNickname(novoNick).catch(() => {});
+            }
+        } else if (!tinhaAmg && temAmg) {
+            const nomeBase = newMember.nickname || newMember.user.globalName || newMember.user.username;
+            const novoNick = formatarNickComTag(nomeBase, CONFIG.tagAmigos);
+            if (newMember.manageable && newMember.nickname !== novoNick) {
+                await newMember.setNickname(novoNick).catch(() => {});
+            }
+        }
+    } catch (err) {
+        console.error('Erro no guildMemberUpdate:', err.message);
+    }
+});
+
+// 💬 Comandos com Prefixo (!sincronizartags, !cargos, !painel)
+client.on(Events.MessageCreate, async (msg) => {
+    if (msg.author.bot || !msg.guild) return;
+    const content = msg.content.trim().toLowerCase();
+
+    if (content === '!sincronizartags' || content === '!atualizartags' || content === '!sincronizar') {
+        const perms = msg.member.permissions.has(PermissionsBitField.Flags.ManageNicknames) ||
+                      msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
+        if (!perms) return msg.reply('❌ Apenas a Staff pode sincronizar tags.');
+
+        const waitMsg = await msg.reply('⏳ **Sincronizando tags de todos os membros do servidor... Aguarde.**');
+        const res = await sincronizarTagsTodosMembros(msg.guild);
+
+        const embedRes = new EmbedBuilder()
+            .setColor(CONFIG.corEmbed)
+            .setTitle('🔄 SINCRONIZAÇÃO DE TAGS CONCLUÍDA!')
+            .setDescription(
+                `⚜️ **Membros com Cargo [${res.roleFamNome}]:** Atualizados com a tag \`[NaBriza]\` (${res.atualizadosFam})\n` +
+                `🤝 **Membros com Cargo [${res.roleAmgNome}]:** Atualizados com a tag \`[AMIGO]\` (${res.atualizadosAmg})\n` +
+                `📊 **Total de Nicks Atualizados:** ${res.total}\n` +
+                `${res.ignorados > 0 ? `⚠️ **Ignorados:** ${res.ignorados} (Dono do servidor ou cargos acima do bot)` : '✅ Todos os membros atualizados com sucesso!'}`
+            )
+            .setFooter({ text: 'O cargo do bot deve estar no topo para gerenciar todos os nicks!' })
+            .setTimestamp();
+
+        return waitMsg.edit({ content: null, embeds: [embedRes] });
+    }
+
+    if (content === '!cargos' || content === '!vercargos') {
+        const roleFam = await obterCargoFamilia(msg.guild);
+        const roleAmg = await obterCargoAmigos(msg.guild);
+        const roleNaoReg = await obterCargoNaoRegistrado(msg.guild);
+
+        const embedCargos = new EmbedBuilder()
+            .setColor(CONFIG.corEmbed)
+            .setTitle('📋 CARGOS CONFIGURADOS NO BOT')
+            .setDescription(
+                `⚜️ **Família NaBriza:** ${roleFam ? `<@&${roleFam.id}> (ID: \`${roleFam.id}\`)` : '❌ Não encontrado'}\n` +
+                `🤝 **Amigos:** ${roleAmg ? `<@&${roleAmg.id}> (ID: \`${roleAmg.id}\`)` : '❌ Não encontrado'}\n` +
+                `❌ **Não Registrado:** ${roleNaoReg ? `<@&${roleNaoReg.id}> (ID: \`${roleNaoReg.id}\`)` : '❌ Não encontrado'}`
+            );
+        return msg.reply({ embeds: [embedCargos] });
+    }
+
+    if (content === '!painel') {
+        return msg.channel.send(gerarPainelEscolhaCargos());
+    }
+
+    if (content === '!registro') {
+        return msg.reply(gerarCardRegistroMembro(msg.author));
+    }
+});
+
+// Painéis e Botões
 function gerarPainelEscolhaCargos() {
     const embed = new EmbedBuilder()
         .setColor(CONFIG.corEmbed)
         .setTitle('╔══════════════════════════════════════════════╗\n║     ⚜️ REGISTRO OFICIAL DE CARGOS ⚜️         ║\n║             FAMÍLIA & AMIGOS                 ║\n╚══════════════════════════════════════════════╝')
         .setDescription(
             '👋 **Seja muito bem-vindo(a) ao servidor Família & Amigos!**\n\n' +
-            'Para liberar o acesso aos canais de texto, jogos, bate-papo e salas de voz, escolha a sua categoria:\n\n' +
-            '⚜️ **1. FAMÍLIA NABRIZA [NaBriza]**\n' +
-            '> Membro oficial da Família NaBriza. Libera canais exclusivos da Família, reuniões e eventos.\n\n' +
-            '🤝 **2. AMIGOS DA FAMÍLIA [AMIGO]**\n' +
-            '> Amigo, aliado e parceiro para jogar GTA RP, resenhar e curtir as calls abertas.\n\n' +
-            '──────────────────────────────────────────\n' +
-            '📌 **COMO FUNCIONA O CADASTRO:**\n' +
-            '1️⃣ Clique no botão correspondente abaixo (**Família** ou **Amigo**).\n' +
-            '2️⃣ Preencha o formulário rápido com seu Nick RP e respostas.\n' +
-            '3️⃣ A Staff avaliará sua ficha no canal privado de aprovação.\n' +
-            '4️⃣ Sendo aprovado, seu cargo é entregue na hora e seu nick é atualizado com a tag!\n\n' +
-            '👇 *Clique no botão abaixo para iniciar seu cadastro:*'
-        )
-        .setFooter({ text: 'Família & Amigos • Lealdade, União e Respeito ⚜️' })
-        .setTimestamp();
+            'Para liberar o acesso aos canais, escolha a sua categoria:\n\n' +
+            '⚜️ **1. FAMÍLIA NABRIZA [NaBriza]** (Tag `[NaBriza]` no Nick)\n' +
+            '🤝 **2. AMIGOS DA FAMÍLIA [AMIGO]** (Tag `[AMIGO]` no Nick)\n\n' +
+            '👇 *Clique no botão abaixo para preencher sua ficha:*'
+        );
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -166,14 +432,11 @@ function gerarCardRegistroMembro(user) {
         .setColor(CONFIG.corEmbed)
         .setTitle('⚜️ REGISTRO OFICIAL • FAMÍLIA NABRIZA & AMIGOS ⚜️')
         .setDescription(
-            `Olá ${user ? `<@${user.id}>` : 'Membro'}! Seja bem-vindo(a) ao nosso servidor!\n\n` +
-            'Escolha a sua categoria para liberar os canais:\n\n' +
-            '⚜️ **1. FAMÍLIA NABRIZA [NaBriza]** (Tag `[NaBriza]` no Nick)\n' +
-            '🤝 **2. AMIGOS DA FAMÍLIA [AMIGO]** (Tag `[AMIGO]` no Nick)\n\n' +
-            '👇 *Clique no botão para preencher sua ficha:*'
-        )
-        .setFooter({ text: 'Família & Amigos • Lealdade, União e Respeito ⚜️' })
-        .setTimestamp();
+            `Olá ${user ? `<@${user.id}>` : 'Membro'}! Escolha sua categoria:\n\n` +
+            '⚜️ **1. FAMÍLIA NABRIZA [NaBriza]**\n' +
+            '🤝 **2. AMIGOS DA FAMÍLIA [AMIGO]**\n\n' +
+            '👇 *Clique no botão abaixo para preencher sua ficha:*'
+        );
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -191,41 +454,9 @@ function gerarCardRegistroMembro(user) {
     return { embeds: [embed], components: [row] };
 }
 
-client.once(Events.ClientReady, async (c) => {
-    console.log(`🟢 [BOT ONLINE] Conectado como: ${c.user.tag}`);
-    console.log(`🏷️ Tag Oficial: ${CONFIG.tagFamilia}`);
-    c.user.setPresence({
-        activities: [{ name: "⚜️ Família NaBriza | /registro | !ajuda", type: 3 }],
-        status: "online"
-    });
-});
-
-/**
- * 👤 Evento: Novo Membro Entra no Servidor
- * ✅ O bot NÃO manda mensagem no chat ao entrar uma pessoa!
- * ✅ Apenas entrega o cargo de 'Não Registrado' em silêncio.
- */
-client.on(Events.GuildMemberAdd, async (member) => {
-    try {
-        console.log(`[NOVO MEMBRO SILENCIOSO] ${member.user.tag} (${member.id}) entrou no servidor.`);
-
-        let roleNaoReg = member.guild.roles.cache.get(CONFIG.cargoNaoRegistradoId) ||
-                         member.guild.roles.cache.find(r => r.name.includes('Não Registrado'));
-        if (roleNaoReg) {
-            await member.roles.add(roleNaoReg).catch(err => {
-                console.error('Erro ao entregar cargo Não Registrado:', err.message);
-            });
-        }
-        // NENHUMA MENSAGEM É ENVIADA QUANDO A PESSOA ENTRA!
-    } catch (err) {
-        console.error('Erro no guildMemberAdd:', err.message);
-    }
-});
-
-// ⚡ INTERAÇÕES: MODAL, ENVIO E APROVAÇÃO PELA STAFF
+// ⚡ Interações: Modal e Aprovação
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
-        // Abrir Modal
         if (interaction.isButton() && interaction.customId === 'btn_iniciar_familia') {
             const modal = new ModalBuilder().setCustomId('modal_familia').setTitle('Ficha: Família NaBriza [NaBriza]');
             modal.addComponents(
@@ -248,7 +479,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             return await interaction.showModal(modal);
         }
 
-        // Envio do formulário preenchido (SÓ AQUI MANDA MENSAGEM PARA APROVAR/REPROVAR)
         if (interaction.isModalSubmit() && (interaction.customId === 'modal_familia' || interaction.customId === 'modal_amigos')) {
             await interaction.deferReply({ ephemeral: true }).catch(() => {});
 
@@ -272,16 +502,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 const tag = isFam ? CONFIG.tagFamilia : CONFIG.tagAmigos;
                 const embedStaff = new EmbedBuilder()
                     .setColor(isFam ? 0xD4AF37 : 0x2ECC71)
-                    .setTitle(`📥 NOVA FICHA • ${isFam ? `⚜️ FAMÍLIA NABRIZA ${CONFIG.tagFamilia}` : `🤝 AMIGOS ${CONFIG.tagAmigos}`}`)
+                    .setTitle(`📥 NOVA FICHA DE REGISTRO • ${isFam ? `⚜️ FAMÍLIA NABRIZA ${CONFIG.tagFamilia}` : `🤝 AMIGOS ${CONFIG.tagAmigos}`}`)
                     .setDescription(
                         `👤 **Membro:** <@${interaction.user.id}>\n` +
-                        `🏷️ **Cargo Pretendido:** ${isFam ? 'Família NaBriza' : 'Amigo da Família'}\n` +
+                        `🏷️ **Cargo:** ${isFam ? 'Família NaBriza' : 'Amigo da Família'}\n` +
                         `📝 **Nick Solicitado:** **${nome}**\n` +
-                        `🏷️ **Nick com Tag:** \`${tag} ${nome}\`\n` +
+                        `🏷️ **Nick com Tag:** \`${tag} ${limparTagsAntigas(nome)}\`\n` +
                         `🎂 **Idade:** ${idade}\n\n` +
-                        `📋 **Respostas:**\n` +
-                        `> **${isFam ? 'Quem convidou?' : 'Amigo de quem?'}**\n> ${p1}\n\n` +
-                        `> **${isFam ? 'Honrará a tag [NaBriza]?' : 'Jogos que joga:'}**\n> ${p2}`
+                        `📋 **Respostas:**\n> 1. ${p1}\n> 2. ${p2}`
                     )
                     .setThumbnail(interaction.user.displayAvatarURL())
                     .setTimestamp();
@@ -306,7 +534,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
 
             return await interaction.editReply({
-                content: `✅ **Sua ficha foi enviada com sucesso!** Nossa Staff já a recebeu no canal de aprovação.`
+                content: `✅ **Sua ficha foi enviada com sucesso para a Staff!** Aguarde a aprovação para receber o cargo e a tag.`
             });
         }
 
@@ -325,32 +553,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const member = await interaction.guild?.members.fetch(userId).catch(() => null);
             if (!member) return interaction.followUp({ content: '⚠️ Membro não encontrado!', ephemeral: true });
 
-            // Cargo
-            const roleId = isFam ? CONFIG.cargoFamiliaId : CONFIG.cargoAmigosId;
-            const role = interaction.guild?.roles.cache.get(roleId) ||
-                         interaction.guild?.roles.cache.find(r => r.name.toLowerCase().includes(isFam ? 'família' : 'amigo'));
-            if (role) await member.roles.add(role).catch(() => {});
-
-            // Remove Não Registrado
-            if (CONFIG.cargoNaoRegistradoId) {
-                const roleNaoReg = interaction.guild?.roles.cache.get(CONFIG.cargoNaoRegistradoId);
-                if (roleNaoReg) await member.roles.remove(roleNaoReg).catch(() => {});
-            }
-
-            // Tag [NaBriza] no Nick
-            const tagAplicada = isFam ? CONFIG.tagFamilia : CONFIG.tagAmigos;
-            const novoNick = `${tagAplicada} ${rawNick}`;
-            if (member.manageable) {
-                await member.setNickname(novoNick.substring(0, 32)).catch(() => {});
-            }
+            // Entrega o cargo exato e atualiza o nick com a tag
+            const res = await aplicarCargoETag(member, isFam, rawNick);
 
             await interaction.editReply({
-                content: `✅ **Aprovado por <@${interaction.user.id}>!** Cargo entregue e nick alterado para \`${novoNick}\`.`,
+                content: `✅ **Aprovado por <@${interaction.user.id}>!**\n🏷️ Cargo entregue: **${res.cargoEntregue}**\n📝 Nick atualizado: \`${res.novoNick}\``,
                 embeds: [],
                 components: []
             });
 
-            await member.send(`🎉 Sua ficha foi **APROVADA**! Seu nick foi atualizado para **${novoNick}**. Bom jogo! ⚜️`).catch(() => {});
+            await member.send(`🎉 Sua ficha foi **APROVADA**! Você recebeu o cargo **${res.cargoEntregue}** e seu nick foi atualizado para **${res.novoNick}**. Bom jogo! ⚜️`).catch(() => {});
             return;
         }
 
@@ -368,23 +580,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     } catch (err) {
         console.error('Erro na interação:', err);
-    }
-});
-
-// Comandos de prefixo !painel, !registro, !setupregistro
-client.on(Events.MessageCreate, async (msg) => {
-    if (msg.author.bot || !msg.guild) return;
-    const content = msg.content.trim().toLowerCase();
-
-    if (content === '!painel') {
-        const perms = msg.member.permissions.has(PermissionsBitField.Flags.ManageRoles) ||
-                      msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!perms) return msg.reply(gerarCardRegistroMembro(msg.author));
-        return msg.channel.send(gerarPainelEscolhaCargos());
-    }
-
-    if (content === '!registro') {
-        return msg.reply(gerarCardRegistroMembro(msg.author));
     }
 });
 
