@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * ⚜️ BOT DISCORD 01 • SISTEMA EXCLUSIVO DE REGISTRO & CARGOS ⚜️
- * FAMÍLIA NABRIZA & AMIGOS (AUTO-TAG & DETECÇÃO INTELIGENTE DE CARGOS)
+ * FAMÍLIA SOUZA & AMIGOS (AUTO-TAG & DETECÇÃO INTELIGENTE DE CARGOS)
  * ============================================================================
  */
 
@@ -37,19 +37,19 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
     console.error(`🛡️ [ANTI-CRASH Monitor] Erro:`, err.message || err);
 });
 
-// ⚙️ CONFIGURAÇÃO CENTRALIZADA
+// ⚙️ CONFIGURAÇÃO CENTRALIZADA DA FAMÍLIA SOUZA
 const CONFIG = {
     token: process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.trim() : "",
     guildId: process.env.GUILD_ID ? process.env.GUILD_ID.trim() : null,
-    nomeServidor: process.env.NOME_SERVIDOR || "Família & Amigos",
-    corEmbed: "#D4AF37", // Dourado
+    nomeServidor: process.env.NOME_SERVIDOR || "Família Souza & Amigos",
+    corEmbed: "#D4AF37", // Dourado Nobre
     corChefe: "#FFD700", // Ouro
 
     // Tags Oficiais
-    tagFamilia: "[NaBriza]",
+    tagFamilia: "[Souza]",
     tagAmigos: "[AMIGO]",
 
-    // IDs opcionais (podem ser passados via Railway)
+    // IDs opcionais (podem ser passados via Railway / Variáveis de Ambiente)
     cargoChefeId: process.env.CARGO_CHEFE_ID ? process.env.CARGO_CHEFE_ID.trim() : null,
     cargoFamiliaId: process.env.CARGO_FAMILIA_ID ? process.env.CARGO_FAMILIA_ID.trim() : null,
     cargoAmigosId: process.env.CARGO_AMIGOS_ID ? process.env.CARGO_AMIGOS_ID.trim() : null,
@@ -58,17 +58,18 @@ const CONFIG = {
     // Canal de Aprovação Staff
     canalAprovacaoId: process.env.CANAL_APROVACAO_ID ? process.env.CANAL_APROVACAO_ID.trim() : null,
 
-    // Porta HTTP para Health Check da Railway
+    // Porta HTTP para Health Check da Railway / Hospedagens
     port: process.env.PORT || 3000
 };
 
-// 🌐 SERVIDOR HTTP LEVE PARA HEALTH CHECK DA RAILWAY
+// 🌐 SERVIDOR HTTP LEVE PARA HEALTH CHECK DA RAILWAY / DISCLOUD
 let client = null;
 const server = http.createServer((req, res) => {
     const isReady = client && client.isReady();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-        sistema: 'Bot de Registro - Família NaBriza & Amigos',
+        sistema: 'Bot de Registro - Família Souza & Amigos',
+        familia: 'Família Souza',
         tagFamilia: CONFIG.tagFamilia,
         tagAmigos: CONFIG.tagAmigos,
         status: isReady ? 'online' : 'iniciando',
@@ -124,7 +125,7 @@ client = new Client({
 });
 
 // ============================================================================
-// 🧠 DETECÇÃO E GERENCIAMENTO INTELIGENTE DE CARGOS
+// 🧠 DETECÇÃO E GERENCIAMENTO INTELIGENTE DE CARGOS DA FAMÍLIA SOUZA
 // ============================================================================
 
 function normalizarTexto(txt) {
@@ -141,15 +142,15 @@ async function obterCargoFamilia(guild) {
 
     let role = guild.roles.cache.find(r => {
         const n = normalizarTexto(r.name);
-        return n.includes('nabriza') || n.includes('familia') || n.includes('[nabriza]') || n.includes('[fn]');
+        return n.includes('souza') || n.includes('familia') || n.includes('[souza]') || n.includes('[fs]');
     });
 
     if (!role) {
         role = await guild.roles.create({
-            name: '⚜️ Família NaBriza',
+            name: '⚜️ Família Souza',
             color: '#D4AF37',
             hoist: true,
-            reason: 'Cargo oficial da Família NaBriza gerado automaticamente pelo bot'
+            reason: 'Cargo oficial da Família Souza gerado automaticamente pelo bot'
         }).catch(() => null);
     }
 
@@ -172,7 +173,7 @@ async function obterCargoAmigos(guild) {
 
     if (!role) {
         role = await guild.roles.create({
-            name: '🤝 Amigos',
+            name: '🤝 Amigos da Família',
             color: '#2ECC71',
             hoist: true,
             reason: 'Cargo oficial de Amigos gerado automaticamente pelo bot'
@@ -246,7 +247,7 @@ async function aplicarCargoETag(member, isFam, rawNick) {
     }
 
     return {
-        cargoEntregue: cargoAlvo?.name || (isFam ? 'Família NaBriza' : 'Amigos'),
+        cargoEntregue: cargoAlvo?.name || (isFam ? 'Família Souza' : 'Amigos da Família'),
         novoNick
     };
 }
@@ -296,15 +297,15 @@ async function sincronizarTagsTodosMembros(guild) {
         atualizadosAmg,
         total: atualizadosFam + atualizadosAmg,
         ignorados,
-        roleFamNome: roleFam?.name || 'Família NaBriza',
-        roleAmgNome: roleAmg?.name || 'Amigos'
+        roleFamNome: roleFam?.name || 'Família Souza',
+        roleAmgNome: roleAmg?.name || 'Amigos da Família'
     };
 }
 
 // 👤 Evento: Novo Membro Entra no Servidor (100% Silencioso)
 client.on(Events.GuildMemberAdd, async (member) => {
     try {
-        console.log(`[NOVO MEMBRO SILENCIOSO] ${member.user.tag} entrou.`);
+        console.log(`[NOVO MEMBRO SILENCIOSO] ${member.user.tag} entrou na Família Souza.`);
         const roleNaoReg = await obterCargoNaoRegistrado(member.guild);
         if (roleNaoReg) {
             await member.roles.add(roleNaoReg).catch(() => {});
@@ -353,16 +354,16 @@ client.on(Events.MessageCreate, async (msg) => {
     if (content === '!sincronizartags' || content === '!atualizartags' || content === '!sincronizar') {
         const perms = msg.member.permissions.has(PermissionsBitField.Flags.ManageNicknames) ||
                       msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!perms) return msg.reply('❌ Apenas a Staff pode sincronizar tags.');
+        if (!perms) return msg.reply('❌ Apenas a Staff da Família Souza pode sincronizar tags.');
 
-        const waitMsg = await msg.reply('⏳ **Sincronizando tags de todos os membros do servidor... Aguarde.**');
+        const waitMsg = await msg.reply('⏳ **Sincronizando tags da Família Souza de todos os membros... Aguarde.**');
         const res = await sincronizarTagsTodosMembros(msg.guild);
 
         const embedRes = new EmbedBuilder()
             .setColor(CONFIG.corEmbed)
-            .setTitle('🔄 SINCRONIZAÇÃO DE TAGS CONCLUÍDA!')
+            .setTitle('🔄 SINCRONIZAÇÃO DE TAGS • FAMÍLIA SOUZA')
             .setDescription(
-                `⚜️ **Membros com Cargo [${res.roleFamNome}]:** Atualizados com a tag \`[NaBriza]\` (${res.atualizadosFam})\n` +
+                `⚜️ **Membros com Cargo [${res.roleFamNome}]:** Atualizados com a tag \`[Souza]\` (${res.atualizadosFam})\n` +
                 `🤝 **Membros com Cargo [${res.roleAmgNome}]:** Atualizados com a tag \`[AMIGO]\` (${res.atualizadosAmg})\n` +
                 `📊 **Total de Nicks Atualizados:** ${res.total}\n` +
                 `${res.ignorados > 0 ? `⚠️ **Ignorados:** ${res.ignorados} (Dono do servidor ou cargos acima do bot)` : '✅ Todos os membros atualizados com sucesso!'}`
@@ -380,9 +381,9 @@ client.on(Events.MessageCreate, async (msg) => {
 
         const embedCargos = new EmbedBuilder()
             .setColor(CONFIG.corEmbed)
-            .setTitle('📋 CARGOS CONFIGURADOS NO BOT')
+            .setTitle('📋 CARGOS CONFIGURADOS • FAMÍLIA SOUZA')
             .setDescription(
-                `⚜️ **Família NaBriza:** ${roleFam ? `<@&${roleFam.id}> (ID: \`${roleFam.id}\`)` : '❌ Não encontrado'}\n` +
+                `⚜️ **Família Souza:** ${roleFam ? `<@&${roleFam.id}> (ID: \`${roleFam.id}\`)` : '❌ Não encontrado'}\n` +
                 `🤝 **Amigos:** ${roleAmg ? `<@&${roleAmg.id}> (ID: \`${roleAmg.id}\`)` : '❌ Não encontrado'}\n` +
                 `❌ **Não Registrado:** ${roleNaoReg ? `<@&${roleNaoReg.id}> (ID: \`${roleNaoReg.id}\`)` : '❌ Não encontrado'}`
             );
@@ -402,11 +403,11 @@ client.on(Events.MessageCreate, async (msg) => {
 function gerarPainelEscolhaCargos() {
     const embed = new EmbedBuilder()
         .setColor(CONFIG.corEmbed)
-        .setTitle('╔══════════════════════════════════════════════╗\n║     ⚜️ REGISTRO OFICIAL DE CARGOS ⚜️         ║\n║             FAMÍLIA & AMIGOS                 ║\n╚══════════════════════════════════════════════╝')
+        .setTitle('╔══════════════════════════════════════════════╗\n║     ⚜️ REGISTRO OFICIAL DE CARGOS ⚜️         ║\n║             FAMÍLIA SOUZA & AMIGOS           ║\n╚══════════════════════════════════════════════╝')
         .setDescription(
-            '👋 **Seja muito bem-vindo(a) ao servidor Família & Amigos!**\n\n' +
+            '👋 **Seja muito bem-vindo(a) à Família Souza & Amigos!**\n\n' +
             'Para liberar o acesso aos canais, escolha a sua categoria:\n\n' +
-            '⚜️ **1. FAMÍLIA NABRIZA [NaBriza]** (Tag `[NaBriza]` no Nick)\n' +
+            '⚜️ **1. FAMÍLIA SOUZA [Souza]** (Tag `[Souza]` no Nick)\n' +
             '🤝 **2. AMIGOS DA FAMÍLIA [AMIGO]** (Tag `[AMIGO]` no Nick)\n\n' +
             '👇 *Clique no botão abaixo para preencher sua ficha:*'
         );
@@ -414,7 +415,7 @@ function gerarPainelEscolhaCargos() {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('btn_iniciar_familia')
-            .setLabel('Entrar na Família [NaBriza]')
+            .setLabel('Entrar na Família [Souza]')
             .setEmoji('⚜️')
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
@@ -430,10 +431,10 @@ function gerarPainelEscolhaCargos() {
 function gerarCardRegistroMembro(user) {
     const embed = new EmbedBuilder()
         .setColor(CONFIG.corEmbed)
-        .setTitle('⚜️ REGISTRO OFICIAL • FAMÍLIA NABRIZA & AMIGOS ⚜️')
+        .setTitle('⚜️ REGISTRO OFICIAL • FAMÍLIA SOUZA & AMIGOS ⚜️')
         .setDescription(
             `Olá ${user ? `<@${user.id}>` : 'Membro'}! Escolha sua categoria:\n\n` +
-            '⚜️ **1. FAMÍLIA NABRIZA [NaBriza]**\n' +
+            '⚜️ **1. FAMÍLIA SOUZA [Souza]**\n' +
             '🤝 **2. AMIGOS DA FAMÍLIA [AMIGO]**\n\n' +
             '👇 *Clique no botão abaixo para preencher sua ficha:*'
         );
@@ -441,7 +442,7 @@ function gerarCardRegistroMembro(user) {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('btn_iniciar_familia')
-            .setLabel('Entrar na Família [NaBriza]')
+            .setLabel('Entrar na Família [Souza]')
             .setEmoji('⚜️')
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
@@ -458,12 +459,12 @@ function gerarCardRegistroMembro(user) {
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
         if (interaction.isButton() && interaction.customId === 'btn_iniciar_familia') {
-            const modal = new ModalBuilder().setCustomId('modal_familia').setTitle('Ficha: Família NaBriza [NaBriza]');
+            const modal = new ModalBuilder().setCustomId('modal_familia').setTitle('Ficha: Família Souza [Souza]');
             modal.addComponents(
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('nome').setLabel('Seu Nome / Nick RP:').setStyle(TextInputStyle.Short).setRequired(true)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('idade').setLabel('Sua Idade:').setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p1').setLabel('Quem te convidou?').setStyle(TextInputStyle.Paragraph).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p2').setLabel('Concorda em honrar a tag [NaBriza]?').setStyle(TextInputStyle.Paragraph).setRequired(true))
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p1').setLabel('Quem te convidou para os Souza?').setStyle(TextInputStyle.Paragraph).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p2').setLabel('Concorda em honrar a tag [Souza]?').setStyle(TextInputStyle.Paragraph).setRequired(true))
             );
             return await interaction.showModal(modal);
         }
@@ -473,7 +474,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             modal.addComponents(
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('nome').setLabel('Seu Nome / Nick RP:').setStyle(TextInputStyle.Short).setRequired(true)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('idade').setLabel('Sua Idade:').setStyle(TextInputStyle.Short).setRequired(true)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p1').setLabel('De quem você é amigo na Família?').setStyle(TextInputStyle.Paragraph).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p1').setLabel('De quem você é amigo na Família Souza?').setStyle(TextInputStyle.Paragraph).setRequired(true)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('p2').setLabel('Quais jogos costuma jogar?').setStyle(TextInputStyle.Paragraph).setRequired(true))
             );
             return await interaction.showModal(modal);
@@ -494,7 +495,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
             if (!canalStaff) {
                 canalStaff = interaction.guild?.channels.cache.find(c => 
-                    c.type === ChannelType.GuildText && (c.name.includes('aprovacao') || c.name.includes('fichas'))
+                    c.type === ChannelType.GuildText && (c.name.includes('aprovacao') || c.name.includes('fichas') || c.name.includes('staff'))
                 );
             }
 
@@ -502,12 +503,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 const tag = isFam ? CONFIG.tagFamilia : CONFIG.tagAmigos;
                 const embedStaff = new EmbedBuilder()
                     .setColor(isFam ? 0xD4AF37 : 0x2ECC71)
-                    .setTitle(`📥 NOVA FICHA DE REGISTRO • ${isFam ? `⚜️ FAMÍLIA NABRIZA ${CONFIG.tagFamilia}` : `🤝 AMIGOS ${CONFIG.tagAmigos}`}`)
+                    .setTitle(`📥 NOVA FICHA DE REGISTRO • ${isFam ? `⚜️ FAMÍLIA SOUZA ${CONFIG.tagFamilia}` : `🤝 AMIGOS ${CONFIG.tagAmigos}`}`)
                     .setDescription(
                         `👤 **Membro:** <@${interaction.user.id}>\n` +
-                        `🏷️ **Cargo:** ${isFam ? 'Família NaBriza' : 'Amigo da Família'}\n` +
+                        `🏷️ **Cargo Solicitado:** ${isFam ? '⚜️ Família Souza' : '🤝 Amigo da Família'}\n` +
                         `📝 **Nick Solicitado:** **${nome}**\n` +
-                        `🏷️ **Nick com Tag:** \`${tag} ${limparTagsAntigas(nome)}\`\n` +
+                        `🏷️ **Nick Formatado com Tag:** \`${tag} ${limparTagsAntigas(nome)}\`\n` +
                         `🎂 **Idade:** ${idade}\n\n` +
                         `📋 **Respostas:**\n> 1. ${p1}\n> 2. ${p2}`
                     )
@@ -534,7 +535,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
 
             return await interaction.editReply({
-                content: `✅ **Sua ficha foi enviada com sucesso para a Staff!** Aguarde a aprovação para receber o cargo e a tag.`
+                content: `✅ **Sua ficha para a Família Souza foi enviada com sucesso para a Staff!** Aguarde a aprovação para receber o cargo e a tag oficial.`
             });
         }
 
@@ -542,7 +543,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.isButton() && interaction.customId.startsWith('apv|')) {
             const temPerm = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageRoles) ||
                             interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator);
-            if (!temPerm) return interaction.reply({ content: '❌ Apenas a Staff pode aprovar!', ephemeral: true });
+            if (!temPerm) return interaction.reply({ content: '❌ Apenas a Staff da Família Souza pode aprovar!', ephemeral: true });
 
             await interaction.deferUpdate().catch(() => {});
             const parts = interaction.customId.split('|');
@@ -551,9 +552,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const rawNick = decodeURIComponent(parts[3] || '');
 
             const member = await interaction.guild?.members.fetch(userId).catch(() => null);
-            if (!member) return interaction.followUp({ content: '⚠️ Membro não encontrado!', ephemeral: true });
+            if (!member) return interaction.followUp({ content: '⚠️ Membro não encontrado no servidor!', ephemeral: true });
 
-            // Entrega o cargo exato e atualiza o nick com a tag
+            // Entrega o cargo exato e atualiza o nick com a tag [Souza] ou [AMIGO]
             const res = await aplicarCargoETag(member, isFam, rawNick);
 
             await interaction.editReply({
@@ -562,7 +563,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 components: []
             });
 
-            await member.send(`🎉 Sua ficha foi **APROVADA**! Você recebeu o cargo **${res.cargoEntregue}** e seu nick foi atualizado para **${res.novoNick}**. Bom jogo! ⚜️`).catch(() => {});
+            await member.send(`🎉 Parabéns! Sua ficha na **Família Souza** foi **APROVADA**! Você recebeu o cargo **${res.cargoEntregue}** e seu nick foi atualizado para **${res.novoNick}**. Bem-vindo(a) à família! ⚜️`).catch(() => {});
             return;
         }
 
@@ -570,7 +571,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.isButton() && interaction.customId.startsWith('rep|')) {
             const temPerm = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageRoles) ||
                             interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator);
-            if (!temPerm) return interaction.reply({ content: '❌ Apenas a Staff pode reprovar!', ephemeral: true });
+            if (!temPerm) return interaction.reply({ content: '❌ Apenas a Staff da Família Souza pode reprovar!', ephemeral: true });
 
             return await interaction.update({
                 content: `❌ **Registro Reprovado por <@${interaction.user.id}>.**`,
@@ -585,5 +586,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Login do Bot
 if (CONFIG.token && CONFIG.token.length > 25) {
-    client.login(CONFIG.token).catch(err => console.error('Erro no login:', err.message));
+    client.login(CONFIG.token).then(() => {
+        console.log(`⚜️ [FAMÍLIA SOUZA] Bot online com sucesso como ${client.user.tag}!`);
+    }).catch(err => console.error('Erro no login do Discord:', err.message));
 }
